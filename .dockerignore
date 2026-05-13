@@ -10,3 +10,31 @@
 
 # YOUR FILES LISTED BELOW THIS LINE (IMPORTANT: PREPEND !)
 # ----------------------------------------------------------------------------
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Docs build
+html/
+docs/_build/
+
+# Tests / notebooks
+notebook_test/
+
+# Venvs
+venv/
+.venv/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
