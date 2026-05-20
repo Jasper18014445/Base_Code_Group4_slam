@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Int32
+from duckietown_msgs.msg import WheelEncoderStamped
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Quaternion
 import tf
@@ -27,8 +27,8 @@ class OdometryNode:
         self.prev_right_ticks = None
 
         # Subscribers
-        rospy.Subscriber("/left_wheel_encoder_node/tick", Int32, self.left_cb)
-        rospy.Subscriber("/right_wheel_encoder_node/tick", Int32, self.right_cb)
+        rospy.Subscriber("/virtbot1/left_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.left_cb)
+        rospy.Subscriber("/virtbot1/right_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.right_cb)
 
         # Publisher
         self.odom_pub = rospy.Publisher("/odometry", Odometry, queue_size=10)
