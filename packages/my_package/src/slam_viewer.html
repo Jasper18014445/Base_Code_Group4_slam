@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duckiebot SLAM Viewer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Chakra+Petch:wght@300;600&display=swap');
+:root {
+  --bg:#0a0e17; --panel:#111827; --border:#1e3a5f;
+  --accent:#00d4ff; --accent2:#ff6b35; --text:#c8d6e5;
+  --dim:#4a5568; --green:#00ff88;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;
+  height:100vh;display:grid;
+  grid-template-rows:54px 1fr;
+  grid-template-columns:1fr 270px;
+  overflow:hidden;
+}
+header{
+  grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:12px;
+}
+.logo{font-family:'Chakra Petch',sans-serif;font-size:18px;font-weight:600;color:var(--accent);letter-spacing:3px;}
+.sub{font-size:10px;color:var(--dim);letter-spacing:1px;}
+
+/* IP bar */
+#ip-bar{margin-left:auto;display:flex;align-items:center;gap:8px;}
+#ip-bar label{font-size:10px;color:var(--dim);}
+#ip-input{
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  font-family:'Space Mono',monospace;font-size:12px;padding:4px 8px;
+  border-radius:3px;width:140px;outline:none;
+}
+#ip-input:focus{border-color:var(--accent);}
+#connect-btn{
+  background:transparent;border:1px solid var(--accent);color:var(--accent);
+  font-family:'Space Mono',monospace;font-size:11px;padding:4px 12px;
+  cursor:pointer;border-radius:3px;letter-spacing:1px;
+}
+#connect-btn:hover{background:var(--accent);color:var(--bg);}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:background .3s;flex-shrink:0;}
+.dot.live{background:var(--green);animation:pulse 2s infinite;}
+.dot.err{background:#ff4444;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #00ff8866;}70%{box-shadow:0 0 0 8px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+#status-lbl{font-size:10px;color:var(--dim);min-width:90px;}
+
+/* Kaart */
+#map-area{
+  overflow:hidden;background:#060a10;position:relative;
+  display:flex;align-items:center;justify-content:center;cursor:crosshair;
+}
+#map-canvas{image-rendering:pixelated;max-width:100%;max-height:100%;}
+#no-map{color:var(--dim);font-size:11px;letter-spacing:1px;text-align:center;line-height:2.4;position:absolute;}
+#map-lbl{position:absolute;bottom:10px;left:14px;font-size:9px;color:var(--dim);letter-spacing:1px;pointer-events:none;}
+#ts-lbl{position:absolute;bottom:10px;right:14px;font-size:9px;color:var(--dim);pointer-events:none;}
+
+/* Zijpaneel */
+aside{
+  background:var(--panel);border-left:1px solid var(--border);
+  padding:18px 14px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;
+}
+.ph{
+  font-family:'Chakra Petch',sans-serif;font-size:10px;letter-spacing:2px;
+  color:var(--accent);text-transform:uppercase;
+  padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:10px;
+}
+.row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;}
+.lbl{font-size:10px;color:var(--dim);}
+.val{font-size:12px;font-weight:700;color:var(--accent);}
+.val2{font-size:12px;font-weight:700;color:var(--accent2);}
+.leg{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;color:var(--dim);}
+.ld{width:11px;height:11px;border-radius:2px;flex-shrink:0;}
+.instr{font-size:10px;color:var(--dim);line-height:1.9;}
+.instr code{color:var(--accent);background:#0a1a2a;padding:1px 5px;border-radius:2px;font-size:9px;}
+.instr .cmd{display:block;background:#0a1a2a;color:var(--accent);padding:5px 8px;border-radius:3px;margin:4px 0;font-size:9px;}
+#dl-btn{
+  font-family:'Space Mono',monospace;font-size:10px;background:transparent;
+  border:1px solid var(--border);color:var(--text);padding:7px 10px;
+  cursor:pointer;width:100%;text-align:left;letter-spacing:1px;border-radius:2px;
+}
+#dl-btn:hover{border-color:var(--accent);color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">🦆 SLAM VIEWER</div>
+    <div class="sub">Live via rosbridge — poort 9001</div>
+  </div>
+  <div id="ip-bar">
+    <label>Robot IP:</label>
+    <input id="ip-input" type="text" value="172.17.0.2" spellcheck="false">
+    <button id="connect-btn" onclick="connect()">Verbind</button>
+    <div class="dot" id="dot"></div>
+    <div id="status-lbl">Niet verbonden</div>
+  </div>
+</header>
+
+<div id="map-area">
+  <canvas id="map-canvas" style="display:none"></canvas>
+  <div id="no-map">Klik op <strong>Verbind</strong> om te starten</div>
+  <div id="map-lbl"></div>
+  <div id="ts-lbl"></div>
+</div>
+
+<aside>
+  <div>
+    <div class="ph">Robot Pose</div>
+    <div class="row"><span class="lbl">X</span><span class="val" id="px">—</span></div>
+    <div class="row"><span class="lbl">Y</span><span class="val" id="py">—</span></div>
+    <div class="row"><span class="lbl">Richting (θ)</span><span class="val" id="pt">—</span></div>
+  </div>
+  <div>
+    <div class="ph">Kaart</div>
+    <div class="row"><span class="lbl">Bezette cellen</span><span class="val2" id="occ">—</span></div>
+    <div class="row"><span class="lbl">Resolutie</span><span class="val" id="res">—</span></div>
+    <div class="row"><span class="lbl">Afmeting</span><span class="val" id="sz">—</span></div>
+    <div class="row"><span class="lbl">Laatste update</span><span class="val" id="upd">—</span></div>
+  </div>
+  <div>
+    <div class="ph">Legenda</div>
+    <div class="leg"><div class="ld" style="background:#0d1f2d;border:1px solid #1e3a5f"></div>Vrij</div>
+    <div class="leg"><div class="ld" style="background:#00d4ff"></div>Feature / obstakel</div>
+    <div class="leg"><div class="ld" style="background:#060a10;border:1px solid #1e3a5f"></div>Onbekend</div>
+    <div class="leg"><div class="ld" style="background:#ff6b35;border-radius:50%"></div>Robot</div>
+    <div class="leg"><div class="ld" style="background:#00ff8866"></div>Gereden pad</div>
+  </div>
+  <div>
+    <div class="ph">Opstarten</div>
+    <div class="instr">
+      In de container:<br>
+      <span class="cmd">bash slam-launch.sh</span>
+      Vul dan het robot-IP in<br>
+      en klik <strong>Verbind</strong>.<br><br>
+      Werkt via rosbridge op<br>
+      poort <code>9001</code> — geen<br>
+      extra configuratie nodig.
+    </div>
+  </div>
+  <button id="dl-btn" onclick="downloadMap()">⬇ Sla kaart op (PNG)</button>
+</aside>
+
+<script>
+// ── Toestand ─────────────────────────────────────────────────────────────────
+let _ros = null, _mapSub = null, _poseSub = null;
+let _traj = [], _lastMeta = null;
+
+// Herstel opgeslagen IP
+try { const s = localStorage.getItem('duck_ip'); if(s) document.getElementById('ip-input').value = s; } catch(e){}
+
+// ── roslib laden vanuit CDN ───────────────────────────────────────────────────
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js';
+script.onload = () => { /* klaar om te verbinden */ };
+document.head.appendChild(script);
+
+// ── Status helpers ────────────────────────────────────────────────────────────
+function setStatus(state, msg) {
+  const d = document.getElementById('dot');
+  d.className = 'dot' + (state==='live'?' live':state==='err'?' err':'');
+  document.getElementById('status-lbl').textContent = msg;
+}
+
+// ── Verbinding ────────────────────────────────────────────────────────────────
+function connect() {
+  const ip = document.getElementById('ip-input').value.trim();
+  if (!ip) return;
+  try { localStorage.setItem('duck_ip', ip); } catch(e){}
+
+  if (_ros) { _ros.close(); }
+
+  setStatus('', 'Verbinden...');
+
+  _ros = new ROSLIB.Ros({ url: `ws://${ip}:9001` });
+
+  _ros.on('connection', () => {
+    setStatus('live', 'LIVE via rosbridge');
+    subscribeTopics();
+  });
+
+  _ros.on('error', (e) => {
+    setStatus('err', 'Verbinding mislukt');
+    console.error('ROS error:', e);
+  });
+
+  _ros.on('close', () => {
+    setStatus('err', 'Verbroken — probeer opnieuw');
+  });
+}
+
+// ── ROS topic subscriptions ───────────────────────────────────────────────────
+function subscribeTopics() {
+  // OccupancyGrid kaart
+  _mapSub = new ROSLIB.Topic({
+    ros: _ros,
+    name: '/slam_map',
+    messageType: 'nav_msgs/OccupancyGrid',
+    throttle_rate: 500,   // max 2x per seconde
+    queue_length: 1,
+  });
+  _mapSub.subscribe(onMap);
+
+  // Robot pose (fused of visual)
+  _poseSub = new ROSLIB.Topic({
+    ros: _ros,
+    name: '/fused_pose',
+    messageType: 'geometry_msgs/Pose2D',
+    throttle_rate: 200,
+    queue_length: 1,
+  });
+  _poseSub.subscribe(onPose);
+
+  // Fallback: visual_pose
+  const vizPose = new ROSLIB.Topic({
+    ros: _ros,
+    name: '/visual_pose',
+    messageType: 'geometry_msgs/Pose2D',
+    throttle_rate: 200,
+    queue_length: 1,
+  });
+  vizPose.subscribe(onPose);
+}
+
+// ── Pose callback ─────────────────────────────────────────────────────────────
+function onPose(msg) {
+  _traj.push({x: msg.x, y: msg.y});
+  if (_traj.length > 3000) _traj.shift();
+
+  document.getElementById('px').textContent = msg.x.toFixed(3) + ' m';
+  document.getElementById('py').textContent = msg.y.toFixed(3) + ' m';
+  document.getElementById('pt').textContent = (msg.theta * 180/Math.PI).toFixed(1) + '°';
+
+  if (_lastMeta) drawOverlay(_lastMeta, msg);
+}
+
+// ── Kaart callback ────────────────────────────────────────────────────────────
+function onMap(msg) {
+  const W   = msg.info.width;
+  const H   = msg.info.height;
+  const res = msg.info.resolution;
+  const data = msg.data;
+
+  const canvas = document.getElementById('map-canvas');
+  const noMap  = document.getElementById('no-map');
+  noMap.style.display = 'none';
+  canvas.style.display = 'block';
+
+  // Schaal zodat de kaart goed zichtbaar is
+  const scale = Math.max(1, Math.min(4, Math.floor(700 / Math.max(W, H, 1))));
+  canvas.width  = W * scale;
+  canvas.height = H * scale;
+
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(W * scale, H * scale);
+
+  let occ = 0;
+  for (let row = 0; row < H; row++) {
+    for (let col = 0; col < W; col++) {
+      const src = (H - 1 - row) * W + col;   // flip Y
+      const v   = data[src];
+      let r, g, b;
+      if (v < 0 || v === 255) { r=10;  g=14;  b=23;  }   // onbekend
+      else if (v === 0)       { r=13;  g=31;  b=45;  }   // vrij
+      else if (v === 50)      { r=255; g=107; b=53;  }   // robot
+      else { const t=v/100; r=0; g=Math.round(212*t); b=Math.round(255*t); occ++; }
+
+      // Schaal naar meerdere pixels
+      for (let dr = 0; dr < scale; dr++) {
+        for (let dc = 0; dc < scale; dc++) {
+          const di = ((row*scale+dr)*W*scale + col*scale+dc) * 4;
+          img.data[di]=r; img.data[di+1]=g; img.data[di+2]=b; img.data[di+3]=255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Traject tekenen
+  _lastMeta = { W, H, res, scale,
+    ox: msg.info.origin.position.x,
+    oy: msg.info.origin.position.y };
+  drawTrajectory(_lastMeta);
+
+  // Stats
+  document.getElementById('occ').textContent = occ.toLocaleString();
+  document.getElementById('res').textContent = (res*100).toFixed(0) + ' cm/cel';
+  document.getElementById('sz').textContent  =
+    (W*res).toFixed(1) + '×' + (H*res).toFixed(1) + ' m';
+  document.getElementById('upd').textContent = 'nu';
+  document.getElementById('map-lbl').textContent =
+    W+'×'+H+' cellen | '+(res*100).toFixed(0)+' cm/cel';
+  document.getElementById('ts-lbl').textContent = new Date().toLocaleTimeString();
+}
+
+// ── Teken traject op canvas ───────────────────────────────────────────────────
+function drawTrajectory(m) {
+  if (_traj.length < 2) return;
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(0,255,136,0.5)';
+  ctx.lineWidth   = Math.max(1, m.scale);
+  for (let i = 0; i < _traj.length; i++) {
+    const cx = (_traj[i].x - m.ox) / m.res * m.scale;
+    const cy = (m.H - (_traj[i].y - m.oy) / m.res) * m.scale;
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  }
+  ctx.stroke();
+}
+
+function drawOverlay(m, pose) {
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  const rx = (pose.x - m.ox) / m.res * m.scale;
+  const ry = (m.H - (pose.y - m.oy) / m.res) * m.scale;
+  const s  = Math.max(6, m.scale * 5);
+  const t  = -pose.theta;
+  ctx.save();
+  ctx.translate(rx, ry);
+  ctx.rotate(t);
+  ctx.beginPath();
+  ctx.moveTo(s, 0);
+  ctx.lineTo(-s/2, s/2);
+  ctx.lineTo(-s/2, -s/2);
+  ctx.closePath();
+  ctx.fillStyle   = '#ff6b35';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth   = 1.5;
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function downloadMap() {
+  const canvas = document.getElementById('map-canvas');
+  if (canvas.style.display==='none') { alert('Nog geen kaart.'); return; }
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'slam_map_' + Date.now() + '.png';
+  a.click();
+}
+
+// Auto-verbinden als IP al ingevuld is
+window.addEventListener('load', () => {
+  const ip = document.getElementById('ip-input').value.trim();
+  if (ip && ip !== '172.17.0.2') {
+    setTimeout(connect, 800);
+  }
+});
+
+document.getElementById('ip-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') connect();
+});
+</script>
+</body>
+</html>

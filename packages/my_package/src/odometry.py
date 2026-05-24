@@ -27,7 +27,7 @@ class OdometryNode:
         self.prev_right_ticks = None
 
         # Subscribers
-        vehicle_name = rospy.get_param("~vehicle_name", "dduck02")
+        vehicle_name = rospy.get_param("~vehicle_name", "virtbot1")
         rospy.Subscriber(f"/{vehicle_name}/left_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.left_cb)
         rospy.Subscriber(f"/{vehicle_name}/right_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.right_cb)
 
