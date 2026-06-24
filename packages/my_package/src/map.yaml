@@ -1,0 +1,58 @@
+start_node: BL
+goal_node: TR
+
+nodes:
+  TL: [0, 4]      # top-left corner
+  TC: [4.5, 4]    # top T-junction
+  TR: [9, 4]      # top-right corner
+
+  ML: [0, 2]      # middle-left T-junction
+  MC: [4.5, 2]    # center 4-way intersection
+  MR: [9, 2]      # middle-right T-junction
+
+  BL: [0, 0]      # bottom-left corner (start area)
+  BC: [4.5, 0]    # bottom T-junction
+  BR: [9, 0]      # bottom-right corner (goal area)
+
+edges:
+  TL:
+    TC: 4
+    ML: 2
+
+  TC:
+    TL: 4
+    TR: 4
+    MC: 2
+
+  TR:
+    TC: 4
+    MR: 2
+
+  ML:
+    TL: 2
+    BL: 2
+    MC: 4
+
+  MC:
+    TC: 2
+    ML: 4
+    MR: 4
+    BC: 2
+
+  MR:
+    TR: 2
+    MC: 4
+    BR: 2
+
+  BL:
+    ML: 2
+    BC: 4
+
+  BC:
+    BL: 4
+    MC: 2
+    BR: 4
+
+  BR:
+    BC: 4
+    MR: 2
