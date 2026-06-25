@@ -18,7 +18,7 @@ class CalibratedLocalization:
         self.path = []
         self.current_node = None
 
-        rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        rospy.Subscriber("/odometry", Odometry, self.odom_callback)
         rospy.Subscriber("/planned_path", String, self.path_callback)
 
         self.pub_current = rospy.Publisher("/current_node", String, queue_size=1)
