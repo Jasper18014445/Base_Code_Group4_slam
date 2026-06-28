@@ -28,11 +28,11 @@ class OdometryNode:
 
         # Subscribers
         vehicle_name = rospy.get_param("~vehicle_name", "virtbot1")
-        rospy.Subscriber(f"/{vehicle_name}/left_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.left_cb)
-        rospy.Subscriber(f"/{vehicle_name}/right_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.right_cb)
+        rospy.Subscriber(f"/{vehicle_name}left_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.left_cb)
+        rospy.Subscriber(f"/{vehicle_name}right_wheel_encoder_driver_node/tick", WheelEncoderStamped, self.right_cb)
 
         # Publisher
-        self.odom_pub = rospy.Publisher("/odometry", Odometry, queue_size=10)
+        self.odom_pub = rospy.Publisher("odometry", Odometry, queue_size=10)
 
         self.left_ticks = 0
         self.right_ticks = 0

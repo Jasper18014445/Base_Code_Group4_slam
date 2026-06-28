@@ -18,12 +18,12 @@ class CalibratedLocalization:
         self.path = []
         self.current_node = None
 
-        rospy.Subscriber("/odometry", Odometry, self.odom_callback)
-        rospy.Subscriber("/planned_path", String, self.path_callback)
+        rospy.Subscriber("odometry", Odometry, self.odom_callback)
+        rospy.Subscriber("planned_path", String, self.path_callback)
 
-        self.pub_current = rospy.Publisher("/current_node", String, queue_size=1)
-        self.pub_next = rospy.Publisher("/next_node", String, queue_size=1)
-        self.pub_remaining = rospy.Publisher("/remaining_path", String, queue_size=1)
+        self.pub_current = rospy.Publisher("current_node", String, queue_size=1)
+        self.pub_next = rospy.Publisher("next_node", String, queue_size=1)
+        self.pub_remaining = rospy.Publisher("remaining_path", String, queue_size=1)
 
         rospy.loginfo("=== LOCALIZATION NODE STARTED ===")
         rospy.loginfo(f"Loaded {len(self.node_positions)} nodes from map.")
@@ -77,6 +77,7 @@ class CalibratedLocalization:
 
             rospy.loginfo("===================================")
             rospy.loginfo(f"🤖 Robot pose: x={x:.2f}, y={y:.2f}")
+            rospy.loginfo(f"x={x:.3f}, y={y:.3f}")
             rospy.loginfo(f"📍 Current node: {self.current_node}")
 
             if self.current_node in self.path:
