@@ -9,7 +9,7 @@ MAP_FILE="/code/catkin_ws/src/timros1/packages/my_package/src/map.yaml"
 echo "Using map file: $MAP_FILE"
 
 # 1. Odometry
-rosrun my_package odometry.py &
+rosrun my_package odometry2.py &
 sleep 2
 echo "[slam-launch] ✓ odometry gestart"
 
@@ -18,7 +18,7 @@ rosrun my_package yaml_dijkstra_node.py \
     _map_file:=$MAP_FILE &
 
 # Start Localization
-rosrun my_package calibrated_localization.py \
+rosrun my_package calibrated_localization2.py \
     _map_file:=$MAP_FILE &
 
 dt-launchfile-join
